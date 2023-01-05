@@ -2,19 +2,37 @@
 
 ## Description
 
-I wanted to map the exposed ports of webapps in docker containers to readable names.
+I wanted to map the exposed ports of webapps in docker containers to readable hostnames.
 
-The shellscript adds 
+The shellscript
 
-* a hostname to /etc/conf and 
-* creates a vhost config for nginx with a a proxy rule.
+* adds a hostname to /etc/conf and
+* creates a self signed ssl certificate for each hostname
+* creates a vhost config for nginx with a proxy rule to its docker container port
 
 ## Installation
 
-(1) extract source or git clone
-(2) Install Nginx.
+* extract source or git clone\
+* Install Nginx
 
 ## Configuration
+
+### Prepare Nginx config
+
+as root
+
+`cd /etc/nginx`
+
+In the `nginx.conf` add an include rule inside the http section to load /etc/nginx/vhost.d/*.conf.
+
+```txt
+...
+http {
+    ...
+    include /etc/nginx/vhost.d/*.conf;
+    ...
+}
+```
 
 ### Setup your docker containers and ports
 
@@ -31,25 +49,8 @@ Example
 
 ```txt
 exampleweb.docker:8000
-examplecms.docker:8002
-myapp.docker:8003
-```
-
-### Setup Nginx
-
-as root
-
-`cd /etc/nginx`
-
-In the `nginx.conf` add an include rule inside the http section to load /etc/nginx/vhost.d/*.conf.
-
-```txt
-...
-http {
-    ...
-    include /etc/nginx/vhost.d/*.conf;
-    ...
-}
+examplecms.docker:8001
+myapp.docker:8002
 ```
 
 ## Usage
