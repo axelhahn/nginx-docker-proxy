@@ -1,0 +1,4 @@
+docker-hosts.cfg
+nginx_config/*.crt
+nginx_config/*.key
+nginx_config/*.conf
