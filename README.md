@@ -12,7 +12,7 @@ The shellscript
 
 ## Installation
 
-* extract source or git clone\
+* extract source or git clone
 * Install Nginx
 
 ## Configuration
