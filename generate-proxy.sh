@@ -13,7 +13,7 @@
 # CONFIG
 # ------------------------------------------------------------
 
-_version=0.1
+_version=0.2
 comment="# ADDED BY DOCKERPROXY "
 hostsfile=/etc/hosts
 
