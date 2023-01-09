@@ -5,6 +5,7 @@
 #
 # ----------------------------------------------------------------------
 # 2023-01-05  v0.1  wwww.axel-hahn.de   initial version
+# 2023-01-09  v0.2  wwww.axel-hahn.de   show diff of vhost config
 # ======================================================================
 
 
@@ -54,7 +55,7 @@ function _checkContainers(){
         if ( netstat -tulpen | grep ":$targetport" >/dev/null ); then
             echo "OK, container is running"
         else
-            echo "Container does not run"
+            echo "INFO: Container does not run"
         fi
         echo
     done
@@ -111,32 +112,41 @@ function _updateNginxConf(){
     local keyfile=$nginxhosts/$myhost.key
     local certfile=$nginxhosts/$myhost.crt
 
-    if test -f "${conffile}" ; then
-        if ( grep "server_name $myhost" "${conffile}" && grep "http://127.0.0.1:$targetport;" "${conffile}" ) >/dev/null; then
-            echo "OK, nginx config already exists: ${conffile}"
-        else
-            echo "Exists: $conffile ... but server or port do not match."
-            cat "${conffile}"
-        fi
-    else
-        echo "Creating ${conffile}"
-        echo "
+    echo "
 server{
-        listen 80;
-        listen 443 ssl;
-            
-        server_name $myhost;
+    listen 80;
+    listen 443 ssl;
+        
+    server_name $myhost;
 
-        ssl_certificate          ${nginxconfdir}/$( basename ${certfile} );
-        ssl_trusted_certificate  ${nginxconfdir}/$( basename ${certfile} );
-        ssl_certificate_key      ${nginxconfdir}/$( basename ${keyfile}  );
+    ssl_certificate          ${nginxconfdir}/$( basename ${certfile} );
+    ssl_trusted_certificate  ${nginxconfdir}/$( basename ${certfile} );
+    ssl_certificate_key      ${nginxconfdir}/$( basename ${keyfile}  );
 
-        location /
-        {
-                proxy_pass http://127.0.0.1:$targetport;
-        }
+    location /
+    {
+            proxy_pass http://127.0.0.1:$targetport;
+    }
 }
-" >$conffile
+"       >"$conffile.tmp"
+
+    local bOverwrite=1
+    if test -f "${conffile}" ; then
+        if diff --color "$conffile" "$conffile.tmp"; then
+            echo "SKIP: config $conffile has no change."
+            rm -f "$conffile.tmp"
+            local bOverwrite=0
+        fi
+    fi
+
+    if [ $bOverwrite -eq 1 ]; then
+        echo "OK, Writing new config $conffile ..."
+        if mv -f "$conffile.tmp" "$conffile"; then
+            echo "OK, file was written"
+        else
+            echo "ERROR: unable to write file."
+            exit 2
+        fi
     fi
 }
 
@@ -177,6 +187,7 @@ function _showUrls(){
     for myhost in $( _getHosts )
     do
         echo "    https://${myhost}"
+        curl -ki "https://${myhost}"
     done
 }
 
@@ -200,14 +211,17 @@ echo
 _checkRequiredBin openssl
 _checkRequiredBin nginx
 echo
+echo
 
 echo "========== process docker hosts"
 echo
 _checkContainers
+echo
 
 echo "========== Update and restart nginx"
 echo
 _updateNginx
+echo
 
 echo "========== DOME: These urls are configured now for local access"
 echo
