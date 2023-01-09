@@ -12,10 +12,11 @@ If you run docker containers directly then you open `http://localhost:PORT` for 
 
 ### If using a proxy
 
-The proxy translates `http://localhost:portnumber/` to `http(s)://[APPNAME]/` for your browser access. For each request it makes a backend request to the current container ports.
+The proxy translates `http(s)://[APPNAME]/` to `http://localhost:portnumber/` for a simpler access to a docker aoo. For each request it makes a backend request to the current container ports.
 
 ![](./docs/images/docker-proxy-overview-Page-2.drawio.png)
 
+Remark: This is a proxy for your local access with a webbrowser only. It does not effect any docker internal access from one app to another.
 
 The generator shellscript
 
