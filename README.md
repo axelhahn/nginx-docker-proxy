@@ -31,10 +31,19 @@ The generator shellscript
   * `pamac install nginx` - Arch/ Manjaro
   * `yum install nginx` - CentOS
 * OpenSSL. It is used to create a self signed SSL certificate to use https.
+* A user with sudo permissions. If your local user has no sudo to all commands then as minimum the script uses sudo for:
+  * docker
+  * grep
+  * ln
+  * netstat
+  * nginx
+  * tee
+  * rm
+  * sytemctl
 
 ## Installation
 
-* extract source or git clone. Go into your directory where to create a subdir for the proxy generator script.
+You can extract source or use `git clone`. Go into your directory where to create a subdir for the proxy generator script.
 
 ```txt
 cd ~/scripts/
@@ -128,10 +137,10 @@ This command
 
 ### Listen mode
 
-You also can let the script wait for starting containers: add th e parameter `-l`.
+You also can let the script wait for starting containers: add the parameter `-l`:
 Start `./generate-proxy.sh -l` or `./generate-proxy.sh --loop`. 
 
-This does the same like described in the section above. Add the end it waits for docker events to add new docker hosts 
+This does the same like described in the section above. Add the end it waits for docker events and will add new (non existing) docker hosts into hosts file and create a new Nginx config file.
 
 ### Show config
 
