@@ -109,7 +109,7 @@ OPTIONS
 
 ### Create proxy rules
 
-Start `./generate-proxy.sh`. There is no parameter requirerd.
+Start `./generate-proxy.sh`. There is no parameter required.
 
 This command
 
