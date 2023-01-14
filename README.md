@@ -74,6 +74,8 @@ Copy `docker-hosts.cfg.dist` to `docker-hosts.cfg`.
 Add your docker apps of all containers in the docker-hosts.cfg.
 For multiple host to port mappings write each into a new line.
 
+**Remark:** Adding static definitions for containers and ports is optional.
+
 Syntax:
 
 `HOSTNAME:PORT`
@@ -88,12 +90,34 @@ myapp.docker:8002
 
 ## Usage
 
-Start `sudo ./generate-proxy.sh`. There is no parameter requirerd - it reads the config file.
-Use sudo or start it as as root to add missing hosts into /etc/hosts and to update nginx config and restart its service.
+### Show help
+
+Start `./generate-proxy.sh -h` to see the supported parameters.
+
+```txt
+SYNTAX
+    generate-proxy.sh [OPTIONS]
+
+OPTIONS
+    -f|--hostsfile FILE  set a hosts file; default: /etc/hosts
+    -h|--help            show this help and exit
+    -l|--loop            enable loop to detect starting docker containers
+    -n|--noloop          disable loop to detect starting docker containers
+    -s|--show            show configuration and generated entries and exit
+    -v|--verbose         show more output
+```
+
+### Create proxy rules
+
+Start `./generate-proxy.sh`. There is no parameter requirerd.
 
 This command
 
-* Loops over all defined hostnames with its port
+* Loops over all defined hostnames with its port in `docker-hosts.cfg`
+  * create an entry in /etc/hosts with "127.0.0.1 [HOSTNAME]"
+  * create a self signed SSL certificate for [HOSTNAME]
+  * create a nginx vhost config file for ports 80, 443 with proxy rule to http to docker port.
+* Loops over all running docker containers and check if they offer an http service
   * create an entry in /etc/hosts with "127.0.0.1 [HOSTNAME]"
   * create a self signed SSL certificate for [HOSTNAME]
   * create a nginx vhost config file for ports 80, 443 with proxy rule to http to docker port.
@@ -101,4 +125,15 @@ This command
   * link nginx config dir as /etc/nfinx/vhosts.d/
   * checks nginx config with `nginx -t`
   * restarts nginx service
-* Shows configured https urls
+
+### Listen mode
+
+You also can let the script wait for starting containers: add th e parameter `-l`.
+Start `./generate-proxy.sh -l` or `./generate-proxy.sh --loop`. 
+
+This does the same like described in the section above. Add the end it waits for docker events to add new docker hosts 
+
+### Show config
+
+Start `./generate-proxy.sh -s` or `./generate-proxy.sh --show`.
+It shows you all generated entries for docker container proxies in /etc/hosts and Nginx config.
