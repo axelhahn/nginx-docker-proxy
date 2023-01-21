@@ -316,7 +316,7 @@ _checkContainers
 echo Passed.
 
 _h2 "Check running docker containers ..."
-for appname in $( $DOCKERCMD ps | sed -n "2,\$p" | rev | awk '{ print $1 }' | rev )
+for appname in $( $DOCKERCMD ps | awk '{ print $NF }' )
 do
     _handleDockercontainer "$appname"
 done
