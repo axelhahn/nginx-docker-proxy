@@ -7,11 +7,12 @@
 # 2023-01-05 v0.1 wwww.axel-hahn.de initial version
 # 2023-01-09 v0.2 wwww.axel-hahn.de show diff of vhost config
 # 2023-01-14 v0.3 wwww.axel-hahn.de handle running and starting docker containers
+# 2023-01-21 v0.4 wwww.axel-hahn.de replace rev by awk
 # ======================================================================
 # ------------------------------------------------------------
 # CONFIG
 # ------------------------------------------------------------
-_version=0.3
+_version=0.4
 comment="# ADDED BY DOCKERPROXY "
 hostsfile=/etc/hosts
 nginxconfdir=/etc/nginx/vhost.d
@@ -335,6 +336,7 @@ if [ $FLAG_LOOP -eq 1 ]; then
     $DOCKERCMD events --filter 'event=start' | while read -r event
     do
         echo
+        sleep 1
         eventdata=$( echo "$event" | tr "(" "\n" | tr ")" "\n" | tr " " "\n" )
         appname=$( echo "$eventdata" | grep "^name=" | cut -f 2 -d '=')
         _handleDockercontainer "$appname"
