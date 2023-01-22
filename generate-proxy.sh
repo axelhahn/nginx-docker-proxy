@@ -8,11 +8,12 @@
 # 2023-01-09 v0.2 wwww.axel-hahn.de show diff of vhost config
 # 2023-01-14 v0.3 wwww.axel-hahn.de handle running and starting docker containers
 # 2023-01-21 v0.4 wwww.axel-hahn.de replace rev by awk
+# 2023-01-22 v0.5 wwww.axel-hahn.de update output of --show param
 # ======================================================================
 # ------------------------------------------------------------
 # CONFIG
 # ------------------------------------------------------------
-_version=0.4
+_version=0.5
 comment="# ADDED BY DOCKERPROXY "
 hostsfile=/etc/hosts
 nginxconfdir=/etc/nginx/vhost.d
@@ -61,20 +62,20 @@ function _wd(){
 }
 # helper
 # get real config entries from docker-hosts.cfg
-function _getConfigdata(){
+function _getStaticConfig(){
     grep "^[a-z].*" "$configfile" 2>/dev/null | sort
 }
 # helper
 # get all hostnames from config
-function _getHosts(){
-    _getConfigdata | cut -f 1 -d ':'
+function _getStaticHosts(){
+    _getStaticConfig | cut -f 1 -d ':'
 }
 # main function:
 # loop over all config entries and process hosts
 function _checkContainers(){
-    for myhost in $( _getHosts )
+    for myhost in $( _getStaticHosts )
     do
-        targetport=$( _getConfigdata | grep "^$myhost:" | cut -f 2 -d ":" )
+        targetport=$( _getStaticConfig | grep "^$myhost:" | cut -f 2 -d ":" )
         _h3 "$myhost on port $targetport"
         _updateEtcHosts "$myhost"
         _createSslCert "$myhost"
@@ -237,7 +238,7 @@ function _checkRequiredBin(){
     fi
 }
 function _UNUSED_showUrls(){
-    for myhost in $( _getHosts )
+    for myhost in $( _getStaticHosts )
     do
         echo " https://${myhost}"
         curl -ki "https://${myhost}"
@@ -246,18 +247,44 @@ function _UNUSED_showUrls(){
 
 # show created configuration
 function _showProxiedHosts(){
+    local srv=
+
     _h1 "S H O W"
     _h2 "Static mappings in $configfile"
-    _getConfigdata | grep "." || echo "None"
+    _getStaticConfig | grep "." || echo "None"
+
     _h2 "Generated entries in $hostsfile"
     grep "$comment" "$hostsfile" || echo "None"
 
     _h2 "Generated Nginx proxies"
-    ls -l $nginxconfdir/vhost* && for srv in $( grep -i "server_name" $nginxconfdir/vhost* | awk '{ print $2 }' | tr -d ";" )
+    echo "Loop over found configs and detect running docker instance."
+    ls -1 $nginxconfdir/vhost* | while read -r nginxVhost
     do
-        _h3 "https://${srv}"
-        curl -kI "https://${srv}"
+        srv=$( grep -i "server_name" $nginxVhost | awk '{ print $2 }' | tr -d ";" )
+        _h3 $srv
+        (
+            echo -n "config:   "
+            ls -l $nginxVhost
+            echo -n "ssl cert: "; ls -l $nginxconfdir/${srv}*.crt
+            echo -n "ssl key:  "; ls -l $nginxconfdir/${srv}*.key
+            echo -n "hosts:    "
+            if grep "$srv $comment" "$hostsfile" >/dev/null; then
+                echo -n "OK: $hostsfile:"
+                grep -n "$srv $comment" "$hostsfile"
+            else
+                echo "MISS: $srv does not exist in $hostsfile"
+            fi
+            echo -n "proxy:    "
+            if ! curl -kI "https://${srv}" 2>/dev/null; then
+                echo "INFO: https://${srv} is not running"
+            else
+                echo "OK: https://${srv} is UP."
+            fi
+
+        ) | sed "s#^#    #g"
+        echo
     done
+
 }
 
 # ------------------------------------------------------------
