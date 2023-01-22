@@ -9,11 +9,12 @@
 # 2023-01-14 v0.3 wwww.axel-hahn.de handle running and starting docker containers
 # 2023-01-21 v0.4 wwww.axel-hahn.de replace rev by awk
 # 2023-01-22 v0.5 wwww.axel-hahn.de update output of --show param
+# 2023-01-23 v0.6 wwww.axel-hahn.de add param for cleanup
 # ======================================================================
 # ------------------------------------------------------------
 # CONFIG
 # ------------------------------------------------------------
-_version=0.5
+_version=0.6
 comment="# ADDED BY DOCKERPROXY "
 hostsfile=/etc/hosts
 nginxconfdir=/etc/nginx/vhost.d
@@ -35,6 +36,7 @@ SYNTAX
     $self [OPTIONS]
 
 OPTIONS
+    -c|--cleanup         check configuration to clenaup old entries and exit
     -f|--hostsfile FILE  set a hosts file; default: $hostsfile
     -h|--help            show this help and exit
     -l|--loop            enable loop to detect starting docker containers
@@ -115,7 +117,7 @@ function _updateEtcHosts(){
     local myhost=$1
     if ! grep " $myhost" $hostsfile >/dev/null; then
         _wd "Adding [$myhost] to $hostsfile ..."
-        if ! echo 127.0.0.1 $myhost $comment $( date ) | sudo tee -a $hostsfile
+        if ! echo "127.0.0.1 $myhost $comment $( date )" | sudo tee -a "$hostsfile"
         then
             echo "ERROR: unable to write $myhost into $hostsfile"
             exit 1
@@ -245,42 +247,73 @@ function _UNUSED_showUrls(){
     done
 }
 
-# show created configuration
+# show created configuration files 
+# ... or cleanup non static and non running instances
+# param  string  a string to set a cleanup flag; default false: show config data
 function _showProxiedHosts(){
+    local bDoCleanup="$1"
     local srv=
 
-    _h1 "S H O W"
-    _h2 "Static mappings in $configfile"
-    _getStaticConfig | grep "." || echo "None"
+    if [ -n "$bDoCleanup" ]; then
+        _h1 "C L E A N U P"
+    else
+        _h1 "S H O W"
+        _h2 "Static mappings in $configfile"
+        _getStaticConfig | grep "." || echo "None"
 
-    _h2 "Generated entries in $hostsfile"
-    grep "$comment" "$hostsfile" || echo "None"
+        _h2 "Generated entries in $hostsfile"
+        grep "$comment" "$hostsfile" || echo "None"
+    fi
 
     _h2 "Generated Nginx proxies"
     echo "Loop over found configs and detect running docker instance."
+    echo
     ls -1 $nginxconfdir/vhost* | while read -r nginxVhost
     do
         srv=$( grep -i "server_name" $nginxVhost | awk '{ print $2 }' | tr -d ";" )
         _h3 $srv
         (
-            echo -n "config:   "
-            ls -l $nginxVhost
-            echo -n "ssl cert: "; ls -l $nginxconfdir/${srv}*.crt
-            echo -n "ssl key:  "; ls -l $nginxconfdir/${srv}*.key
-            echo -n "hosts:    "
-            if grep "$srv $comment" "$hostsfile" >/dev/null; then
-                echo -n "OK: $hostsfile:"
-                grep -n "$srv $comment" "$hostsfile"
-            else
-                echo "MISS: $srv does not exist in $hostsfile"
-            fi
-            echo -n "proxy:    "
-            if ! curl -kI "https://${srv}" 2>/dev/null; then
-                echo "INFO: https://${srv} is not running"
-            else
-                echo "OK: https://${srv} is UP."
+            if [ -z "$bDoCleanup" ]; then
+                echo -n "config:   "
+                ls -l $nginxVhost
+                echo -n "ssl cert: "; ls -l $nginxconfdir/${srv}*.crt
+                echo -n "ssl key:  "; ls -l $nginxconfdir/${srv}*.key
+                echo -n "hosts:    "
+                if grep "$srv $comment" "$hostsfile" >/dev/null; then
+                    echo -n "OK: $hostsfile:"
+                    grep -n "$srv $comment" "$hostsfile"
+                else
+                    echo "MISS: $srv does not exist in $hostsfile"
+                fi
             fi
 
+            echo -n "proxy:    "
+            httpheader=$( curl -kI "https://${srv}" 2>/dev/null)
+            curlError=$?
+            if [ $curlError -eq 0 ]; then
+                if echo "$httpheader" | grep -i "http/[1-9\.]* 502" >/dev/null ; then
+                    echo -n "ERROR: Nginx is up but docker container is down "
+                    if [ -n "$bDoCleanup" ]; then
+                        if _getStaticConfig | grep "$srv" >/dev/null; then
+                            echo -n "| KEEP: it is a static entry in $configfile"
+                        else
+                            echo "| CLEANUP"
+                            echo "rm -f $nginxconfdir/*${srv}*"
+                            rm -f $nginxconfdir/*${srv}*
+                            echo "sudo sed -i '/ ${srv} /d' $hostsfile"
+                            sudo sed -i "/ ${srv} /d" "$hostsfile"
+                            FLAG_RESTART=1
+                            _restartNginx
+                        fi
+                    fi
+                else
+                    echo -n "OK: Nginx is up and container is up"
+                fi
+            else
+                echo -n "SKIP: Nginx does not run"
+                curlError=0
+            fi
+            echo
         ) | sed "s#^#    #g"
         echo
     done
@@ -314,6 +347,7 @@ while [[ "$#" -gt 0 ]]; do case $1 in
     # -a|--address) IP_ADDRESS="$2"; shift;shift;;
     # -v|--verbose) VERBOSE=1;shift;;
     # -q|--quiet) QUIET="1";shift;;
+    -c|--cleanup)   _showProxiedHosts cleanup;exit 0;;
     -f|--hostsfile) hostsfile="$2";shift;shift;;
     -h|--help)      _h1 "H E L P"; echo "$USAGE"; exit 0;;
     -l|--loop)      FLAG_LOOP=1;shift;;
@@ -344,7 +378,7 @@ _checkContainers
 echo Passed.
 
 _h2 "Check running docker containers ..."
-for appname in $( $DOCKERCMD ps | awk '{ print $NF }' )
+for appname in $( $DOCKERCMD ps | grep -v "CONTAINER ID" | awk '{ print $NF }' )
 do
     _handleDockercontainer "$appname"
 done

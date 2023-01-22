@@ -108,6 +108,7 @@ SYNTAX
     generate-proxy.sh [OPTIONS]
 
 OPTIONS
+    -c|--cleanup         check configuration to clenaup old entries and exit
     -f|--hostsfile FILE  set a hosts file; default: /etc/hosts
     -h|--help            show this help and exit
     -l|--loop            enable loop to detect starting docker containers
