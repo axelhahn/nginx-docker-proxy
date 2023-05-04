@@ -11,6 +11,7 @@
 # 2023-01-22 v0.5 wwww.axel-hahn.de update output of --show param
 # 2023-01-23 v0.6 wwww.axel-hahn.de add param for cleanup
 # 2023-05-04 v0.7 wwww.axel-hahn.de listen on localhost only (no access from network)
+# 2023-05-04 v0.8 wwww.axel-hahn.de add error pages
 # ======================================================================
 # ------------------------------------------------------------
 # CONFIG
@@ -174,6 +175,7 @@ function _updateNginxConf(){
         {
             proxy_pass http://127.0.0.1:$targetport;
         }
+        include /etc/nginx/vhost.d/errorpages/errorpages.conf;
     }
     ">"$conffile.tmp"
     local bOverwrite=1
