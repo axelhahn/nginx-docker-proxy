@@ -16,7 +16,7 @@
 # ------------------------------------------------------------
 # CONFIG
 # ------------------------------------------------------------
-_version=0.7
+_version=0.8
 comment="# ADDED BY DOCKERPROXY "
 hostsfile=/etc/hosts
 nginxconfdir=/etc/nginx/vhost.d
