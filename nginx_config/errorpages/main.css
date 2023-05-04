@@ -1,0 +1,25 @@
+body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 70%;
+    max-width: 900px;
+}
+
+html {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 70vh;
+
+    background-color: #f8f8f8;
+    border-top: 1em solid;
+    color: #a33;
+    font-family: arial;
+    font-size: 140%;
+}
+
+h1 span{font-size: 300%; display: block;}
+.error-middle {
+    display: block;
+}
