@@ -10,11 +10,12 @@
 # 2023-01-21 v0.4 wwww.axel-hahn.de replace rev by awk
 # 2023-01-22 v0.5 wwww.axel-hahn.de update output of --show param
 # 2023-01-23 v0.6 wwww.axel-hahn.de add param for cleanup
+# 2023-05-04 v0.7 wwww.axel-hahn.de listen on localhost only (no access from network)
 # ======================================================================
 # ------------------------------------------------------------
 # CONFIG
 # ------------------------------------------------------------
-_version=0.6
+_version=0.7
 comment="# ADDED BY DOCKERPROXY "
 hostsfile=/etc/hosts
 nginxconfdir=/etc/nginx/vhost.d
@@ -28,6 +29,7 @@ FLAG_DEBUG=0
 FLAG_RESTART=1
 FLAG_LOOP=0
 REDIRECT=/dev/null
+LISTEN_IP="localhost"
 USAGE="
 This script generates nginx config files for http(s) connections to the docker
 container with human readable hostnames instead of localhost:PORTNUMBER.
@@ -158,10 +160,12 @@ function _updateNginxConf(){
     local conffile=$nginxhosts/vhost_$myhost.conf
     local keyfile=$nginxhosts/$myhost.key
     local certfile=$nginxhosts/$myhost.crt
+    local listen
+    test -n "${LISTEN_IP}" && listen="${LISTEN_IP}:"
     echo "
     server{
-        listen 80;
-        listen 443 ssl;
+        listen ${listen}80;
+        listen ${listen}443 ssl;
         server_name $myhost;
         ssl_certificate         ${nginxconfdir}/$( basename ${certfile} );
         ssl_trusted_certificate ${nginxconfdir}/$( basename ${certfile} );
