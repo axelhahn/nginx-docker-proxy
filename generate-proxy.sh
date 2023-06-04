@@ -12,11 +12,12 @@
 # 2023-01-23 v0.6 wwww.axel-hahn.de add param for cleanup
 # 2023-05-04 v0.7 wwww.axel-hahn.de listen on localhost only (no access from network)
 # 2023-05-04 v0.8 wwww.axel-hahn.de add error pages
+# 2023-06-04 v0.8 wwww.axel-hahn.de show ports and detect multiple apps to it
 # ======================================================================
 # ------------------------------------------------------------
 # CONFIG
 # ------------------------------------------------------------
-_version=0.8
+_version=0.9
 comment="# ADDED BY DOCKERPROXY "
 hostsfile=/etc/hosts
 nginxconfdir=/etc/nginx/vhost.d
@@ -277,9 +278,11 @@ function _showProxiedHosts(){
     ls -1 $nginxconfdir/vhost* | while read -r nginxVhost
     do
         srv=$( grep -i "server_name" $nginxVhost | awk '{ print $2 }' | tr -d ";" )
-        _h3 $srv
+        dockertarget=$( grep -i "proxy_pass" $nginxVhost | awk '{ print $2 }' | tr -d ";"  )
+        _h3 "$srv"
         (
             if [ -z "$bDoCleanup" ]; then
+                echo "target:   $dockertarget"
                 echo -n "config:   "
                 ls -l $nginxVhost
                 echo -n "ssl cert: "; ls -l $nginxconfdir/${srv}*.crt
@@ -321,9 +324,20 @@ function _showProxiedHosts(){
             fi
             echo
         ) | sed "s#^#    #g"
-        echo
     done
-
+    _h2 "Docker ports"
+    echo "Check local docker ports."
+    echo
+    
+    grep -i "proxy_pass" $nginxconfdir/vhost* | awk '{ print $3 }' | tr -d ";" | sort -u | while read dockertarget
+    do
+        echo -n "$dockertarget - "
+        cfglist=$( grep -l "$dockertarget" $nginxconfdir/vhost* )
+        srv=$( cat $cfglist | grep -i "server_name" | awk '{ print $2 }' | tr -d ";" )
+        echo $srv
+        test $( echo "$cfglist" | wc -l ) != "1" && ( echo "    WARNING: this port was added to different apps. You cannot run them at the same time."; echo )
+    done
+    echo
 }
 
 # ------------------------------------------------------------
