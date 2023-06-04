@@ -4,6 +4,8 @@
 
 On my development computer I run multiple docker containers for different apps. I wanted to map the exposed ports of webapps in docker containers to readable hostnames.
 
+The target group is a developer runnning docker for development on his/ her machine.
+
 ### Default way
 
 If you run docker containers directly then you open `http://localhost:PORT` for each app and need to remember the configured portnumbers.
@@ -44,9 +46,12 @@ The generator shellscript
 ## Installation
 
 You can extract source or use `git clone`. Go into your directory where to create a subdir for the proxy generator script.
+I describe an installation below /opt - it requires root or sudo permissions.
 
 ```txt
-cd ~/scripts/
+sudo -i
+mkdir /opt
+cd /opt
 ```
 get the software
 ```txt
@@ -57,9 +62,7 @@ which creates a subdir named "nginx-docker-proxy" ... or add a directory name be
 git clone https://github.com/axelhahn/nginx-docker-proxy.git [your_custom_dir]
 ```
 
-## Configuration
-
-### Prepare Nginx config
+### Prepare Nginx config I: add include
 
 as root
 
@@ -76,14 +79,26 @@ http {
 }
 ```
 
-### Setup your docker containers and ports
+### Prepare Nginx config I: add softlink
+
+After telling to load something fron /etc/nginx/vhost.d/ we need to set a link to our custom config:
+
+```txt
+cd /etc/nginx
+mv vhost.d vhost.d__bak
+ln -s /opt/docker-proxy/nginx_config vhost.d
+```
+
+## Configuration
+
+### Setup static docker containers and ports
+
+**Remark:** Adding static definitions for containers and ports is optional.
 
 Copy `docker-hosts.cfg.dist` to `docker-hosts.cfg`.
 
 Add your docker apps of all containers in the docker-hosts.cfg.
 For multiple host to port mappings write each into a new line.
-
-**Remark:** Adding static definitions for containers and ports is optional.
 
 Syntax:
 
@@ -119,7 +134,8 @@ OPTIONS
 
 ### Create proxy rules
 
-Start `./generate-proxy.sh` without parameters.
+First start your docker container with an http service inside. 
+Then start `./generate-proxy.sh` without parameters.
 
 This command
 
