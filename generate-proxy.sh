@@ -4,20 +4,22 @@
 # AXELS PROXY GENERATOR FOR DOCKER CONTAINERS
 #
 # ----------------------------------------------------------------------
-# 2023-01-05 v0.1 wwww.axel-hahn.de initial version
-# 2023-01-09 v0.2 wwww.axel-hahn.de show diff of vhost config
-# 2023-01-14 v0.3 wwww.axel-hahn.de handle running and starting docker containers
-# 2023-01-21 v0.4 wwww.axel-hahn.de replace rev by awk
-# 2023-01-22 v0.5 wwww.axel-hahn.de update output of --show param
-# 2023-01-23 v0.6 wwww.axel-hahn.de add param for cleanup
-# 2023-05-04 v0.7 wwww.axel-hahn.de listen on localhost only (no access from network)
-# 2023-05-04 v0.8 wwww.axel-hahn.de add error pages
-# 2023-06-04 v0.8 wwww.axel-hahn.de show ports and detect multiple apps to it
+# 2023-01-05 v0.1  wwww.axel-hahn.de initial version
+# 2023-01-09 v0.2  wwww.axel-hahn.de show diff of vhost config
+# 2023-01-14 v0.3  wwww.axel-hahn.de handle running and starting docker containers
+# 2023-01-21 v0.4  wwww.axel-hahn.de replace rev by awk
+# 2023-01-22 v0.5  wwww.axel-hahn.de update output of --show param
+# 2023-01-23 v0.6  wwww.axel-hahn.de add param for cleanup
+# 2023-05-04 v0.7  wwww.axel-hahn.de listen on localhost only (no access from network)
+# 2023-05-04 v0.8  wwww.axel-hahn.de add error pages
+# 2023-06-04 v0.9  wwww.axel-hahn.de show ports and detect multiple apps to it
+# 2023-06-04 v0.10 wwww.axel-hahn.de improve output on missing files
 # ======================================================================
-# ------------------------------------------------------------
+
+# ----------------------------------------------------------------------
 # CONFIG
-# ------------------------------------------------------------
-_version=0.9
+# ----------------------------------------------------------------------
+_version=0.10
 comment="# ADDED BY DOCKERPROXY "
 hostsfile=/etc/hosts
 nginxconfdir=/etc/nginx/vhost.d
@@ -27,6 +29,9 @@ selfdir=$( pwd )
 self=$( basename $0 )
 configfile="$selfdir/docker-hosts.cfg"
 
+OK='\e[1;32m✔️ OK\e[0m'
+ERROR='\e[1;31m⛔ERROR\e[0m'
+ERROR='⛔ \e[41m\e[38m ERROR \e[0m'
 FLAG_DEBUG=0
 FLAG_RESTART=1
 FLAG_LOOP=0
@@ -48,9 +53,9 @@ OPTIONS
     -s|--show            show configuration and generated entries and exit
     -v|--verbose         show more output
 "
-# ------------------------------------------------------------
+# ----------------------------------------------------------------------
 # FUNCTIONS
-# ------------------------------------------------------------
+# ----------------------------------------------------------------------
 function _h1(){
     echo
     echo -e "\e[33m############### $*\e[0m"
@@ -87,7 +92,7 @@ function _checkContainers(){
         _createSslCert "$myhost"
         _updateNginxConf "$myhost" "$targetport"
         if ( sudo netstat -tulpen | grep ":$targetport" >/dev/null ); then
-            _wd "OK, container is running"
+            _wd "${OK}, container is running"
         else
             _wd "INFO: Container does not run"
         fi
@@ -106,7 +111,7 @@ function _handleDockercontainer(){
     # echo "$myhost - id $dockerid - $portmapping ... $portinside to $portexposed"
     if $DOCKERCMD exec $myhost curl -I -q http://localhost:$portinside 2>/dev/null | grep -i "http/" > $REDIRECT; then
         _wd "--> container uses an http service on port :$portinside"
-        echo "OK, can be enabled for Nginx proxy to local port $portexposed"
+        echo -e "${OK}, can be enabled for Nginx proxy to local port $portexposed"
         _updateEtcHosts "$myhost"
         _createSslCert "$myhost"
         _updateNginxConf "$myhost" "$portexposed"
@@ -123,10 +128,10 @@ function _updateEtcHosts(){
         _wd "Adding [$myhost] to $hostsfile ..."
         if ! echo "127.0.0.1 $myhost $comment $( date )" | sudo tee -a "$hostsfile"
         then
-            echo "ERROR: unable to write $myhost into $hostsfile"
+            echo -e "${ERROR}: unable to write $myhost into $hostsfile"
             exit 1
         else
-            _wd "$myhost was added into $hostsfile"
+            _wd "${OK}, $myhost was added into $hostsfile"
             FLAG_RESTART=1
         fi
     else
@@ -188,12 +193,13 @@ function _updateNginxConf(){
         fi
     fi
     if [ $bOverwrite -eq 1 ]; then
-        _wd "OK, Writing new config $conffile ..."
+        _wd "${OK}, Writing new config $conffile ..."
         if mv -f "$conffile.tmp" "$conffile"; then
-            echo "OK, file $conffile was written"
+            echo -e "${OK}, file $conffile was written"
+            echo
             FLAG_RESTART=1
         else
-            echo "ERROR: unable to write file."
+            echo -e "${ERROR}: unable to write file."
             exit 2
         fi
     fi
@@ -203,11 +209,11 @@ function _updateNginx(){
     _h3 "Check link ${nginxconfdir} ..."
     cd "$( dirname ${nginxconfdir} )" || exit 1
     if ! sudo grep "include.*$nginxconfdir" nginx.conf >/dev/null; then
-        echo "ERROR: you need to modify the nginx.conf. In http section add a include:"
+        echo -e "${ERROR}: you need to modify the nginx.conf. In http section add a include:"
         echo "include $nginxconfdir/*.conf;"
         exit 1
     fi
-    _wd "OK, include rule was added in nginx.conf."
+    _wd "${OK}, include rule was added in nginx.conf."
     _wd "setting link to vhost config: ${selfdir}/${nginxhosts} -> ${nginxconfdir}"
     sudo rm -f "${nginxconfdir}"
     sudo ln -s "${selfdir}/${nginxhosts}" "${nginxconfdir}"
@@ -220,12 +226,12 @@ function _restartNginx(){
     _h3 "Restart Nginx"
     if [ $FLAG_RESTART -eq 1 ]; then
         if sudo nginx -t 2>$REDIRECT; then
-            echo -n "Config OK... Restarting service... "
+            echo -ne "Config ${OK}... Restarting service... "
             if sudo systemctl restart nginx ; then
-                echo OK
+                echo -e "${OK}"
                 FLAG_RESTART=0
             else
-                echo "FAILED :-/"
+                echo -e "${ERROR} FAILED :-/"
                 sudo systemctl status nginx
                 exit 1
             fi
@@ -240,10 +246,10 @@ function _restartNginx(){
 # helper: check if a required binary is in $PATH (= installed)
 function _checkRequiredBin(){
     if ! which $1 >/dev/null; then
-        echo "ERROR: required binary $1 is not available"
+        echo -e "${ERROR}: required binary $1 is not available"
         exit 1
     else
-        _wd "OK, $1 was found"
+        _wd "${OK}, $1 was found"
     fi
 }
 function _UNUSED_showUrls(){
@@ -272,85 +278,96 @@ function _showProxiedHosts(){
         grep "$comment" "$hostsfile" || echo "None"
     fi
 
-    _h2 "Generated Nginx proxies"
-    echo "Loop over found configs and detect running docker instance."
-    echo
-    ls -1 $nginxconfdir/vhost* | while read -r nginxVhost
-    do
-        srv=$( grep -i "server_name" $nginxVhost | awk '{ print $2 }' | tr -d ";" )
-        dockertarget=$( grep -i "proxy_pass" $nginxVhost | awk '{ print $2 }' | tr -d ";"  )
-        _h3 "$srv"
-        (
-            if [ -z "$bDoCleanup" ]; then
-                echo "target:   $dockertarget"
-                echo -n "config:   "
-                ls -l $nginxVhost
-                echo -n "ssl cert: "; ls -l $nginxconfdir/${srv}*.crt
-                echo -n "ssl key:  "; ls -l $nginxconfdir/${srv}*.key
-                echo -n "hosts:    "
-                if grep "$srv $comment" "$hostsfile" >/dev/null; then
-                    echo -n "OK: $hostsfile:"
-                    grep -n "$srv $comment" "$hostsfile"
-                else
-                    echo "MISS: $srv does not exist in $hostsfile"
+    if ls -1 $nginxconfdir/vhost* >/dev/null 2>&1; then
+        _h2 "Generated Nginx proxies"
+        echo "Loop over found configs and detect running docker instance."
+        echo
+        ls -1 $nginxconfdir/vhost* 2>/dev/null | while read -r nginxVhost
+        do
+            srv=$( grep -i "server_name" $nginxVhost | awk '{ print $2 }' | tr -d ";" )
+            dockertarget=$( grep -i "proxy_pass" $nginxVhost | awk '{ print $2 }' | tr -d ";"  )
+            _h3 "$srv"
+            (
+                if [ -z "$bDoCleanup" ]; then
+                    echo "target:   $dockertarget"
+                    echo -n "config:   "
+                    ls -l $nginxVhost
+                    echo -n "ssl cert: "; ls -l $nginxconfdir/${srv}*.crt
+                    echo -n "ssl key:  "; ls -l $nginxconfdir/${srv}*.key
+                    echo -n "hosts:    "
+                    if grep "$srv $comment" "$hostsfile" >/dev/null; then
+                        echo -ne "${OK}: $hostsfile:"
+                        grep -n "$srv $comment" "$hostsfile"
+                    else
+                        echo "MISS: $srv does not exist in $hostsfile"
+                    fi
                 fi
-            fi
 
-            echo -n "proxy:    "
-            httpheader=$( curl -kI "https://${srv}" 2>/dev/null)
-            curlError=$?
-            if [ $curlError -eq 0 ]; then
-                if echo "$httpheader" | grep -i "http/[1-9\.]* 502" >/dev/null ; then
-                    echo -n "ERROR: Nginx is up but docker container is down "
-                    if [ -n "$bDoCleanup" ]; then
-                        if _getStaticConfig | grep "$srv" >/dev/null; then
-                            echo -n "| KEEP: it is a static entry in $configfile"
-                        else
-                            echo "| CLEANUP"
-                            echo "rm -f $nginxconfdir/*${srv}*"
-                            rm -f $nginxconfdir/*${srv}*
-                            echo "sudo sed -i '/ ${srv} /d' $hostsfile"
-                            sudo sed -i "/ ${srv} /d" "$hostsfile"
-                            FLAG_RESTART=1
-                            _restartNginx
+                echo -n "proxy:    "
+                httpheader=$( curl -kI "https://${srv}" 2>/dev/null)
+                curlError=$?
+                if [ $curlError -eq 0 ]; then
+                    if echo "$httpheader" | grep -i "http/[1-9\.]* 502" >/dev/null ; then
+                        echo -ne "${ERROR}: Nginx is up but docker container is down "
+                        if [ -n "$bDoCleanup" ]; then
+                            if _getStaticConfig | grep "$srv" >/dev/null; then
+                                echo -n "--> KEEP: it is a static entry in $configfile"
+                            else
+                                echo
+                                echo
+                                echo "--> CLEANUP"
+                                echo
+                                echo "rm -f $nginxconfdir/*${srv}*"
+                                rm -f $nginxconfdir/*${srv}*
+                                echo "sudo sed -i '/ ${srv} /d' $hostsfile"
+                                sudo sed -i "/ ${srv} /d" "$hostsfile"
+                                FLAG_RESTART=1
+                                _restartNginx
+                            fi
                         fi
+                    else
+                        echo -ne "${OK}: Nginx is up and container is up --> KEEP"
                     fi
                 else
-                    echo -n "OK: Nginx is up and container is up"
+                    echo -n "SKIP: Nginx does not run"
+                    curlError=0
                 fi
-            else
-                echo -n "SKIP: Nginx does not run"
-                curlError=0
-            fi
-            echo
-        ) | sed "s#^#    #g"
-    done
-    _h2 "Docker ports"
-    echo "Check local docker ports."
-    echo
-    
-    grep -i "proxy_pass" $nginxconfdir/vhost* | awk '{ print $3 }' | tr -d ";" | sort -u | while read dockertarget
-    do
-        echo -n "$dockertarget - "
-        cfglist=$( grep -l "$dockertarget" $nginxconfdir/vhost* )
-        srv=$( cat $cfglist | grep -i "server_name" | awk '{ print $2 }' | tr -d ";" )
-        echo $srv
-        test $( echo "$cfglist" | wc -l ) != "1" && ( echo "    WARNING: this port was added to different apps. You cannot run them at the same time."; echo )
-    done
+                echo
+            ) | sed "s#^#    #g"
+        done
+        _h2 "Docker ports"
+        echo "Check local docker ports."
+        echo
+        
+        if ls $nginxconfdir/vhost* >/dev/null 2>&1; then
+            grep -i "proxy_pass" $nginxconfdir/vhost* | awk '{ print $3 }' | tr -d ";" | sort -u | while read dockertarget
+            do
+                echo -n "$dockertarget - "
+                cfglist=$( grep -l "$dockertarget" $nginxconfdir/vhost* )
+                srv=$( cat $cfglist | grep -i "server_name" | awk '{ print $2 }' | tr -d ";" )
+                echo $srv
+                test $( echo "$cfglist" | wc -l ) != "1" && ( echo "    WARNING: this port was added to different apps. You cannot run them at the same time."; echo )
+            done
+        else
+            echo "INFO: Nothing to do. No Nginx vhost config for docker was found (anymore)."
+        fi
+    else
+        echo "INFO: no config was created yet."
+    fi
     echo
 }
 
-# ------------------------------------------------------------
+# ----------------------------------------------------------------------
 # MAIN
-# ------------------------------------------------------------
+# ----------------------------------------------------------------------
 echo -en "\e[36m"
 cat << HEADERTEXT
 ______________________________________________________________________________
 
 
 AXELS PROXY GENERATOR FOR DOCKER CONTAINERS
-                                                                          ____
-_________________________________________________________________________/ $_version
+                                                                         _____
+________________________________________________________________________/ $_version
 
 
 HEADERTEXT
@@ -374,7 +391,7 @@ while [[ "$#" -gt 0 ]]; do case $1 in
     -n|--noloop)    FLAG_LOOP=0;shift;;
     -s|--show)      _showProxiedHosts;exit 0;;
     -v|--verbose)   FLAG_DEBUG=1;REDIRECT=/dev/tty;shift;;
-    *) echo "ERROR: Unknown parameter: $1"; echo "${USAGE}"; exit 1;
+    *) echo -e "${ERROR}: Unknown parameter: $1"; echo "${USAGE}"; exit 1;
 esac; done
 
 _h1 "I N I T"
@@ -431,4 +448,4 @@ else
     echo
 fi
 
-# ------------------------------------------------------------
+# ----------------------------------------------------------------------
