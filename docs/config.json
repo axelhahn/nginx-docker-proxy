@@ -1,0 +1,26 @@
+{
+    "title": "Docker proxy",
+    "author": "Axel Hahn",
+    "tagline": "Nginx proxy for multiple docker containers",
+    "ignore": {
+        "files": ["30_PHP-client/Plugins/Checks/_skeleton.md"],
+        "folders": ["99_Not_Ready"]
+    },
+    "html": {
+        "auto_toc": true,
+        "auto_landing": false,
+        "date_modified": false,
+        "jump_buttons": true,
+        "edit_on_github": "axelhahn/nginx-docker-proxy/tree/main/docs/",
+        "edit_on_": {
+            "name": "Gitlab",
+            "basepath": "https://git-repo.iml.unibe.ch/iml-open-source/__PROJECT__/tree/master/docs"
+        },
+        "links": {
+            "Git Repo": "https://github.com/axelhahn/nginx-docker-proxy.git",
+            "Axels Docs": "https://www.axel-hahn.de/docs/nginx-docker-proxy/"
+        },
+        "theme": "daux-blue",
+        "search": true
+    }
+}
