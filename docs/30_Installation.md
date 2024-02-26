@@ -29,6 +29,16 @@ chown -R axel:axel /opt/nginx-docker-proxy/
 
 ### Prepare Nginx config 
 
+#### Add softlink
+
+After telling to load something fron /etc/nginx/**vhost.d**/ we need to set a link to our custom config:
+
+```txt
+cd /etc/nginx
+mv vhost.d vhost.d__bak
+ln -s /opt/nginx-docker-proxy/nginx_config vhost.d
+```
+
 #### Add include
 
 as root
@@ -44,14 +54,4 @@ http {
     include /etc/nginx/vhost.d/*.conf;
     ...
 }
-```
-
-#### Add softlink
-
-After telling to load something fron /etc/nginx/vhost.d/ we need to set a link to our custom config:
-
-```txt
-cd /etc/nginx
-mv vhost.d vhost.d__bak
-ln -s /opt/docker-proxy/nginx_config vhost.d
 ```
