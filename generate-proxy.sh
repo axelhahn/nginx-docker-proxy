@@ -14,12 +14,13 @@
 # 2023-05-04 v0.8  wwww.axel-hahn.de add error pages
 # 2023-06-04 v0.9  wwww.axel-hahn.de show ports and detect multiple apps to it
 # 2023-06-04 v0.10 wwww.axel-hahn.de improve output on missing files
+# 2025-09-09 v0.11 wwww.axel-hahn.de generate index page
 # ======================================================================
 
 # ----------------------------------------------------------------------
 # CONFIG
 # ----------------------------------------------------------------------
-_version=0.10
+_version=0.11
 comment="# ADDED BY DOCKERPROXY "
 hostsfile=/etc/hosts
 nginxconfdir=/etc/nginx/vhost.d
@@ -115,6 +116,7 @@ function _handleDockercontainer(){
         _updateEtcHosts "$myhost"
         _createSslCert "$myhost"
         _updateNginxConf "$myhost" "$portexposed"
+        _generateIndex
     else
         echo "SKIP: :$portinside is no http"
     fi
@@ -357,6 +359,48 @@ function _showProxiedHosts(){
     echo
 }
 
+function _generateIndex(){
+    local page="nginx_config/errorpages/index.html"
+    echo '<!DOCTYPE html>
+<html>
+<head>
+    <link rel="stylesheet" href="/errorpages/main.css" />
+    <meta http-equiv="content-type" content="text/html; charset=utf-8">
+	<title>Nginx vhosts for docker containers</title>
+</head>
+
+<body>
+    <div class="error-middle">
+        <span>📁</span>
+        <h1>Nginx vhosts for docker containers</h1>
+        <p>The following vhosts were generated for docker containers</p>
+        <br>
+        <table>
+    ' > "$page"
+    ls -1 $nginxconfdir/vhost* 2>/dev/null | while read -r nginxVhost
+    do
+        srv=$( grep -i "server_name" $nginxVhost | awk '{ print $2 }' | tr -d ";" )
+        dockertarget=$( grep -i "proxy_pass" $nginxVhost | awk '{ print $2 }' | tr -d ";"  )
+        dockerport=${dockertarget//*:/}
+        echo "
+        <tr>
+            <td>
+                <a href=\"https://${srv}\" target=\"_blank\" title=\"open ${srv} with https\"><strong>${srv}</strong></a>
+            </td>
+            <td>
+                localhost<a href=\"${dockertarget}\" target=\"_blank\" title=\"open ${srv} via exposed docker port :${dockerport} with http\">:${dockerport}</a>
+            </td>
+        </tr>" >> "$page"
+    done
+    echo "
+        </table>
+        <br>
+        <br>
+        Generated at <em>$( date )</em> by <a href=\"https://github.com/axelhahn/nginx-docker-proxy\" target=\"_blank\">🌐 Nginx docker proxy</a> v$_version
+    </div>
+</body>
+</html>" >> "$page"
+}
 # ----------------------------------------------------------------------
 # MAIN
 # ----------------------------------------------------------------------
