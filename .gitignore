@@ -2,4 +2,5 @@ docker-hosts.cfg
 nginx_config/*.crt
 nginx_config/*.key
 nginx_config/*.conf
+nginx_config/errorpages/index.html
 static/*

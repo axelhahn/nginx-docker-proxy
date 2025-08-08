@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html class="error">
 <head>
     <link rel="stylesheet" href="/errorpages/main.css" />
     <meta http-equiv="content-type" content="text/html; charset=utf-8">
@@ -7,14 +7,18 @@
 </head>
 
 <body>
-<div class="error-middle">
-        <h1><span>🔌</span> No answer from Docker Container</h1>
+    <div class="error-middle">
+        <span>🔌</span>
+        <h1 class="error">No answer from Docker Container</h1>
         <p>
-            Response is<br>
+            Response is 
             <strong>502 (Bad Gateway)</strong><br>
             <br>
-            This status code indicates that the server, while acting as a gateway or proxy, received an invalid response from an inbound server it accessed while attempting to fulfill the request.
+            <strong>👉🏼 Solution:</strong> Start the docker service for this app.<br>
+            <br>
+            <br>
+            <a href="/dockerindex/">📁 Index</a> ... <a href="https://github.com/axelhahn/nginx-docker-proxy" target="_blank">🌐 Nginx docker proxy</a>
         </p>
-</div>
+    </div>
 </body>
 </html>

@@ -2,24 +2,35 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 70%;
-    max-width: 900px;
 }
 
 html {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 70vh;
-
-    background-color: #f8f8f8;
-    border-top: 1em solid;
-    color: #a33;
+    background-color: #f4f4f4;
+    border-top: 1em solid #38a;
+    color: #444;
     font-family: arial;
     font-size: 140%;
 }
 
-h1 span{font-size: 300%; display: block;}
+html.error {
+    border-top: 1em solid #a33;
+}
+a {color: #33a; text-decoration: none;}
+a:hover {text-decoration: underline;}
+em{color: #388;}
+h1{color: #38a; margin: 0;}
+h1.error{color: #933}
+p{margin: 4em 0 0; clear: both;}
+span{font-size: 300%; float: left; margin-right: 0.3em; background: #eee; padding: 0.3em; border-radius: 0.2em;;}
 .error-middle {
     display: block;
+    box-shadow: 0 0 2em #ddd;
+    background-color: #fff; 
+    border-radius: 2em;
+    margin: 1em auto 0 auto;
+    padding: 2em;
+    min-width: 15em;
+    max-width: 35em;
+    width: 70%;
+    max-width: 900px;
 }

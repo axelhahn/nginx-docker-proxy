@@ -2,7 +2,7 @@
 
 A NGINX Docker proxy to access your dev docker containers 
 
-* istead of ``http://localhot:PORT``
+* instead of ``http://localhost:PORT``
 * with ``https://[APPNAME]``
 
 Free software and open source.
