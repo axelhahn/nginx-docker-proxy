@@ -14,13 +14,14 @@
 # 2023-05-04 v0.8  wwww.axel-hahn.de add error pages
 # 2023-06-04 v0.9  wwww.axel-hahn.de show ports and detect multiple apps to it
 # 2023-06-04 v0.10 wwww.axel-hahn.de improve output on missing files
-# 2025-09-09 v0.11 wwww.axel-hahn.de generate index page
+# 2025-08-09 v0.11 wwww.axel-hahn.de generate index page
+# 2025-08-10 v0.12 wwww.axel-hahn.de add footer
 # ======================================================================
 
 # ----------------------------------------------------------------------
 # CONFIG
 # ----------------------------------------------------------------------
-_version=0.11
+_version=0.12
 comment="# ADDED BY DOCKERPROXY "
 hostsfile=/etc/hosts
 nginxconfdir=/etc/nginx/vhost.d
@@ -116,10 +117,10 @@ function _handleDockercontainer(){
         _updateEtcHosts "$myhost"
         _createSslCert "$myhost"
         _updateNginxConf "$myhost" "$portexposed"
-        _generateIndex
     else
         echo "SKIP: :$portinside is no http"
     fi
+    echo
 }
 
 # ensure that hostname exists in /etc/hosts
@@ -227,6 +228,7 @@ function _updateNginx(){
 function _restartNginx(){
     _h3 "Restart Nginx"
     if [ $FLAG_RESTART -eq 1 ]; then
+        _generateIndex
         if sudo nginx -t 2>$REDIRECT; then
             echo -ne "Config ${OK}... Restarting service... "
             if sudo systemctl restart nginx ; then
@@ -360,6 +362,7 @@ function _showProxiedHosts(){
 }
 
 function _generateIndex(){
+    _h3 "Generating index page ..."
     local page="nginx_config/errorpages/index.html"
     echo '<!DOCTYPE html>
 <html>
@@ -373,7 +376,7 @@ function _generateIndex(){
     <div class="error-middle">
         <span>📁</span>
         <h1>Nginx vhosts for docker containers</h1>
-        <p>The following vhosts were generated for docker containers</p>
+        <p>The following SSL vhosts were generated for http docker containers:</p>
         <br>
         <table>
     ' > "$page"
@@ -385,10 +388,10 @@ function _generateIndex(){
         echo "
         <tr>
             <td>
-                <a href=\"https://${srv}\" target=\"_blank\" title=\"open ${srv} with https\"><strong>${srv}</strong></a>
+                🔒 <a href=\"https://${srv}\" target=\"_blank\" title=\"open ${srv} with https\"><strong>${srv}</strong></a>
             </td>
             <td>
-                localhost<a href=\"${dockertarget}\" target=\"_blank\" title=\"open ${srv} via exposed docker port :${dockerport} with http\">:${dockerport}</a>
+                🔹 localhost<a href=\"${dockertarget}\" target=\"_blank\" title=\"open ${srv} via exposed docker port :${dockerport} with http\">:${dockerport}</a>
             </td>
         </tr>" >> "$page"
     done
@@ -396,8 +399,11 @@ function _generateIndex(){
         </table>
         <br>
         <br>
-        Generated at <em>$( date )</em> by <a href=\"https://github.com/axelhahn/nginx-docker-proxy\" target=\"_blank\">🌐 Nginx docker proxy</a> v$_version
+        Generated at <em>$( date )</em>
     </div>
+    <footer>
+        <a href=\"https://github.com/axelhahn/nginx-docker-proxy\" target=\"_blank\">🌐 Nginx docker proxy</a> v$_version
+    </footer>
 </body>
 </html>" >> "$page"
 }
