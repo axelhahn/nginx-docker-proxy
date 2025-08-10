@@ -18,16 +18,34 @@ html.error {
 a {color: #33a; text-decoration: none;}
 a:hover {text-decoration: underline;}
 em{color: #388;}
-h1{color: #38a; margin: 0;}
+footer{
+    background: #fff;
+    position: fixed;
+    box-shadow: 0 0 2em #ddd;
+    bottom: 0em;
+    right: 0em;
+    padding: 0.5em;
+    border-top-left-radius: 1em;
+}
+h1{color: #38a; margin: 0;
+    text-shadow:
+        0 2px 0px #fff,
+        2px 2px 0px #fff,
+        2px 0px 0px #fff,
+        -2px 0px 0px #fff,
+        0.1em 0.1em 0.3em #888;
+        ;
+}
 h1.error{color: #933}
 p{margin: 4em 0 0; clear: both;}
 span{font-size: 300%; float: left; margin-right: 0.3em; background: #eee; padding: 0.3em; border-radius: 0.2em;;}
+tr:hover{background: #f0e8f0;}
 .error-middle {
     display: block;
     box-shadow: 0 0 2em #ddd;
     background-color: #fff; 
     border-radius: 2em;
-    margin: 1em auto 0 auto;
+    margin: 1em auto 4em auto;
     padding: 2em;
     min-width: 15em;
     max-width: 35em;

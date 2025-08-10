@@ -14,13 +14,14 @@
 # 2023-05-04 v0.8  wwww.axel-hahn.de add error pages
 # 2023-06-04 v0.9  wwww.axel-hahn.de show ports and detect multiple apps to it
 # 2023-06-04 v0.10 wwww.axel-hahn.de improve output on missing files
-# 2025-09-09 v0.11 wwww.axel-hahn.de generate index page
+# 2025-08-09 v0.11 wwww.axel-hahn.de generate index page
+# 2025-08-10 v0.12 wwww.axel-hahn.de add footer; integrate index page generation
 # ======================================================================
 
 # ----------------------------------------------------------------------
 # CONFIG
 # ----------------------------------------------------------------------
-_version=0.11
+_version=0.12
 comment="# ADDED BY DOCKERPROXY "
 hostsfile=/etc/hosts
 nginxconfdir=/etc/nginx/vhost.d
@@ -116,10 +117,10 @@ function _handleDockercontainer(){
         _updateEtcHosts "$myhost"
         _createSslCert "$myhost"
         _updateNginxConf "$myhost" "$portexposed"
-        _generateIndex
     else
         echo "SKIP: :$portinside is no http"
     fi
+    echo
 }
 
 # ensure that hostname exists in /etc/hosts
@@ -225,8 +226,9 @@ function _updateNginx(){
 }
 # restart nginx service
 function _restartNginx(){
-    _h3 "Restart Nginx"
     if [ $FLAG_RESTART -eq 1 ]; then
+        _generateIndex
+        _h3 "Restart Nginx"
         if sudo nginx -t 2>$REDIRECT; then
             echo -ne "Config ${OK}... Restarting service... "
             if sudo systemctl restart nginx ; then
@@ -242,6 +244,7 @@ function _restartNginx(){
             exit 1
         fi
     else
+        _h3 "Restart Nginx"
         echo "SKIP: no change yet"
     fi
     }
@@ -325,6 +328,7 @@ function _showProxiedHosts(){
                                 sudo sed -i "/ ${srv} /d" "$hostsfile"
                                 FLAG_RESTART=1
                                 _restartNginx
+                                _generateIndex
                             fi
                         fi
                     else
@@ -360,6 +364,7 @@ function _showProxiedHosts(){
 }
 
 function _generateIndex(){
+    _h3 "Generating index page ..."
     local page="nginx_config/errorpages/index.html"
     echo '<!DOCTYPE html>
 <html>
@@ -373,33 +378,56 @@ function _generateIndex(){
     <div class="error-middle">
         <span>📁</span>
         <h1>Nginx vhosts for docker containers</h1>
-        <p>The following vhosts were generated for docker containers</p>
+        <p>The following SSL vhosts were generated for http docker containers:</p>
         <br>
+        ' > "$page"
+    if ls -1 $nginxconfdir/vhost* >/dev/null 2>&1
+    then
+        _wd "Found SSL vhosts:"
+        echo '
         <table>
-    ' > "$page"
-    ls -1 $nginxconfdir/vhost* 2>/dev/null | while read -r nginxVhost
-    do
-        srv=$( grep -i "server_name" $nginxVhost | awk '{ print $2 }' | tr -d ";" )
-        dockertarget=$( grep -i "proxy_pass" $nginxVhost | awk '{ print $2 }' | tr -d ";"  )
-        dockerport=${dockertarget//*:/}
-        echo "
-        <tr>
-            <td>
-                <a href=\"https://${srv}\" target=\"_blank\" title=\"open ${srv} with https\"><strong>${srv}</strong></a>
-            </td>
-            <td>
-                localhost<a href=\"${dockertarget}\" target=\"_blank\" title=\"open ${srv} via exposed docker port :${dockerport} with http\">:${dockerport}</a>
-            </td>
-        </tr>" >> "$page"
-    done
+            <tr>
+                <th>SSL vhost</th>
+                <th>Docker target</th>
+            </tr>
+            ' >> "$page"
+        ls -1 $nginxconfdir/vhost* 2>/dev/null | while read -r nginxVhost
+        do
+            srv=$( grep -i "server_name" $nginxVhost | awk '{ print $2 }' | tr -d ";" )
+            dockertarget=$( grep -i "proxy_pass" $nginxVhost | awk '{ print $2 }' | tr -d ";"  )
+            dockerport=${dockertarget//*:/}
+            _wd "'$dockertarget' - '$srv'"
+            echo "
+            <tr>
+                <td>
+                    🔒 <a href=\"https://${srv}\" target=\"_blank\" title=\"open ${srv} with https\"><strong>${srv}</strong></a>
+                </td>
+                <td>
+                    🔹 localhost<a href=\"${dockertarget}\" target=\"_blank\" title=\"open ${srv} via exposed docker port :${dockerport} with http\">:${dockerport}</a>
+                </td>
+            </tr>
+            " >> "$page"
+        done
+        echo '</table>' >> "$page"
+    else
+        _wd "No vhost was found"
+        echo "<p>
+            No vhost was created yet.<br>
+            Start your docker container and run <code>./generate-proxy.sh</code> to create a fisrt vhost.
+            </p>
+            " >> "$page"
+    fi
     echo "
-        </table>
         <br>
         <br>
-        Generated at <em>$( date )</em> by <a href=\"https://github.com/axelhahn/nginx-docker-proxy\" target=\"_blank\">🌐 Nginx docker proxy</a> v$_version
+        Generated at <em>$( date )</em>
     </div>
+    <footer>
+        <a href=\"https://github.com/axelhahn/nginx-docker-proxy\" target=\"_blank\">🌐 Nginx docker proxy</a>
+    </footer>
 </body>
 </html>" >> "$page"
+    echo -e "$OK - index page: $page"
 }
 # ----------------------------------------------------------------------
 # MAIN
@@ -425,9 +453,6 @@ fi
 
 # parse params
 while [[ "$#" -gt 0 ]]; do case $1 in
-    # -a|--address) IP_ADDRESS="$2"; shift;shift;;
-    # -v|--verbose) VERBOSE=1;shift;;
-    # -q|--quiet) QUIET="1";shift;;
     -c|--cleanup)   _showProxiedHosts cleanup;exit 0;;
     -f|--hostsfile) hostsfile="$2";shift;shift;;
     -h|--help)      _h1 "H E L P"; echo "$USAGE"; exit 0;;
@@ -447,8 +472,18 @@ _checkRequiredBin nginx
 _checkRequiredBin sudo
 _checkRequiredBin systemctl
 
-sudo docker ps >/dev/null 2>&1 && DOCKERCMD="sudo docker" && _wd "INFO: Docker runs as root."
-docker ps      >/dev/null 2>&1 && DOCKERCMD="docker"      && _wd "INFO: Rootless Docker detected. Good choice! :-)"
+if docker ps >/dev/null 2>&1; then
+    DOCKERCMD="docker"
+    _wd "INFO: Rootless Docker detected. Good choice! :-)"
+else
+    if sudo docker ps >/dev/null 2>&1; then
+        DOCKERCMD="sudo docker"
+        _wd "INFO: Docker runs as root."
+    else
+        echo -e "${ERROR}: Docker wasn't found."
+        exit 1    
+    fi
+fi
 echo Passed.
 
 _h2 "Verify nginx config"

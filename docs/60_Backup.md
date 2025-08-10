@@ -3,7 +3,7 @@
 
 In your backup software you need as minimum these real data :
 
-1) `/etc/hosts` (but I guess you already added `/etc/`)
+1) `/etc/hosts` (but I guess you already added `/etc/` in your backup)
 2) `/opt/docker-proxy/nginx_config/` for the generated Nginx vhosts and certificates
 3) optional: `/opt/docker-proxy/docker-hosts.cfg`
 
