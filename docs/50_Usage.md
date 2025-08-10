@@ -21,10 +21,12 @@ OPTIONS
     -v|--verbose         show more output
 ```
 
-### Create proxy rules
+### Create a vhost
 
-First start your docker container with an http service inside. 
-Then start `./generate-proxy.sh` without parameters.
+To generate an nginx vhost with a self signed SSL for a docker container:
+
+* First start your docker container with an http service inside. 
+* Then start `./generate-proxy.sh` without parameters.
 
 This command
 
