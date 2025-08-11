@@ -16,12 +16,13 @@
 # 2023-06-04 v0.10 wwww.axel-hahn.de improve output on missing files
 # 2025-08-09 v0.11 wwww.axel-hahn.de generate index page
 # 2025-08-10 v0.12 wwww.axel-hahn.de add footer; integrate index page generation
+# 2025-08-11 v0.13 wwww.axel-hahn.de use http2 for ssl web
 # ======================================================================
 
 # ----------------------------------------------------------------------
 # CONFIG
 # ----------------------------------------------------------------------
-_version=0.12
+_version=0.13
 comment="# ADDED BY DOCKERPROXY "
 hostsfile=/etc/hosts
 nginxconfdir=/etc/nginx/vhost.d
@@ -175,7 +176,7 @@ function _updateNginxConf(){
     echo "
     server{
         listen ${listen}80;
-        listen ${listen}443 ssl;
+        listen ${listen}443 ssl http2;
         server_name $myhost;
         ssl_certificate         ${nginxconfdir}/$( basename ${certfile} );
         ssl_trusted_certificate ${nginxconfdir}/$( basename ${certfile} );
